@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradient Chatbot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Custom scrollbar for the new light/glass theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Glassmorphism effect for the main container */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Styles for generated markdown content */
+        .markdown-content p {
+            margin-bottom: 0.5rem;
+        }
+        .markdown-content ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+         .markdown-content strong {
+            font-weight: 600;
+        }
+
+        /* Animation for incoming messages */
+        .message-fade-in {
+            opacity: 0;
+            transform: translateY(15px);
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Keyframes for the moving blobs animation */
+        @keyframes move {
+            from {
+                transform: translate(0, 0) rotate(0deg) scale(1);
+            }
+            to {
+                transform: translate(20vw, 15vh) rotate(180deg) scale(1.1);
+            }
+        }
+        
+        .mic-button.listening {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 50, 50, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 50, 50, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 50, 50, 0);
+            }
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center font-[Poppins] p-4 overflow-hidden relative">
+
+    <!-- Animated background blobs -->
+    <div class="absolute top-0 left-0 w-full h-full z-[-1] overflow-hidden">
+        <div class="absolute w-72 h-72 md:w-96 md:h-96 bg-gradient-to-br from-purple-400 to-blue-400 rounded-full opacity-60 filter blur-3xl -top-16 -left-16" style="animation: move 25s infinite alternate;"></div>
+        <div class="absolute w-72 h-72 md:w-96 md:h-96 bg-gradient-to-br from-pink-400 to-orange-400 rounded-full opacity-60 filter blur-3xl -bottom-16 -right-16" style="animation: move 30s infinite alternate-reverse;"></div>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div id="chatbot-container" class="glass-effect w-full max-w-lg h-[80vh] max-h-[700px] rounded-2xl shadow-xl flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <header class="p-4 border-b border-white/20 text-gray-800 text-center flex-shrink-0">
+            <h1 class="text-xl font-semibold">Gemini Assistant</h1>
+            <p class="text-xs text-gray-600">Online</p>
+        </header>
+
+        <!-- Chat Window -->
+        <main id="chat-window" class="flex-1 p-6 overflow-y-auto space-y-6">
+            <!-- Messages will be appended here -->
+        </main>
+
+        <!-- Input Area -->
+        <footer class="p-4 border-t border-white/20 bg-transparent flex-shrink-0">
+            <form id="chat-form" class="flex items-center space-x-3">
+                <input 
+                    type="text" 
+                    id="user-input"
+                    placeholder="Type or click mic to speak..."
+                    autocomplete="off"
+                    class="flex-1 bg-white/60 text-gray-800 placeholder-gray-500 px-4 py-2 rounded-full border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all duration-300 disabled:opacity-60"
+                >
+                <button 
+                    type="button"
+                    id="mic-button"
+                    class="mic-button bg-green-500 p-2.5 rounded-full text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition-all duration-300"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+                <button 
+                    type="submit"
+                    class="bg-purple-500 p-2.5 rounded-full text-white hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-400 transition-all duration-300 disabled:opacity-50"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const sendButton = chatForm.querySelector('button[type="submit"]');
+        const micButton = document.getElementById('mic-button');
+
+        let systemInstructionText = "You are a helpful and friendly chatbot."; // fallback
+
+        // --- Load system instruction text from a file ---
+        async function loadSystemInstruction() {
+            try {
+                const response = await fetch("instructions.txt"); // your text file
+                if (!response.ok) throw new Error("Failed to load instruction file");
+                systemInstructionText = await response.text();
+            } catch (err) {
+                console.error("Could not load instruction file:", err);
+            }
+        }
+
+        // Speech Recognition Setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim();
+                userInput.value = transcript;
+                addMessage(transcript, 'user');
+                handleBotResponse(transcript);
+                userInput.value = '';
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error === 'not-allowed') {
+                     addMessage("I need permission to use your microphone to hear you.", 'bot');
+                } else {
+                     addMessage("Sorry, I had trouble understanding. Please try again or type your message.", 'bot');
+                }
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micButton.classList.remove('listening', 'bg-red-500', 'hover:bg-red-600');
+                micButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                userInput.disabled = false;
+                sendButton.disabled = true; // Reset send button
+            };
+            
+            recognition.onstart = () => {
+                isListening = true;
+                micButton.classList.add('listening');
+                micButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                micButton.classList.add('bg-red-500', 'hover:bg-red-600');
+                userInput.disabled = true;
+                sendButton.disabled = true;
+            }
+
+        } else {
+            micButton.style.display = 'none';
+            addMessage("Sorry, your browser doesn't support voice recognition.", 'bot');
+        }
+
+
+        // --- TTS and Audio Helper Functions ---
+        
+        // Helper to decode Base64
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Helper to convert PCM to WAV format
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const dataSize = pcmData.byteLength;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+            
+            // RIFF header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            // fmt chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            // data chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            // Write PCM data
+            const pcm16 = new Int16Array(pcmData);
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(44 + i * 2, pcm16[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+
+        /**
+         * Converts text to speech using Gemini TTS API.
+         * @param {string} text - The text to be spoken.
+         * @param {HTMLElement} buttonElement - The button that was clicked.
+         */
+        async function speak(text, buttonElement) {
+            if (buttonElement.disabled) return;
+            
+            buttonElement.disabled = true;
+            const originalIcon = buttonElement.innerHTML;
+            buttonElement.innerHTML = `<svg class="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+            const apiKey = "AIzaSyAfm7sbVn6YpLt8D7NTmKiPsRFxS6e1xz8";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: `Say in a friendly, clear voice: ${text}` }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Kore" } // A clear, firm voice
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    if (!sampleRateMatch) throw new Error("Sample rate not found in mime type");
+
+                    const sampleRate = parseInt(sampleRateMatch[1], 10);
+                    const pcmBuffer = base64ToArrayBuffer(audioData);
+                    const wavBlob = pcmToWav(pcmBuffer, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    audio.onended = () => URL.revokeObjectURL(audioUrl);
+                } else {
+                    throw new Error("Invalid audio data in response.");
+                }
+
+            } catch (error) {
+                console.error("TTS Error:", error);
+                addMessage("Sorry, I'm having trouble with my voice right now.", 'bot');
+            } finally {
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalIcon;
+            }
+        }
+
+        // --- Core Functions ---
+        
+        /**
+         * Appends a text message to the chat window.
+         * @param {string} message - The text content of the message.
+         * @param {'user' | 'bot'} sender - Who sent the message.
+         */
+        function addMessage(message, sender) {
+            const messageContainer = document.createElement('div');
+            messageContainer.className = `flex gap-2.5 items-end message-fade-in ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.innerHTML = `<span class="text-white text-sm font-semibold">${sender === 'user' ? 'You' : 'AI'}</span>`;
+            avatar.className = `w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${sender === 'user' ? 'bg-purple-400' : 'bg-blue-400'}`;
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.className = `max-w-xs md:max-w-md p-3 rounded-2xl shadow-sm ${sender === 'user' ? 'bg-purple-500 text-white rounded-br-none' : 'bg-white/80 text-gray-800 rounded-bl-none'}`;
+            
+            if (sender === 'user') {
+                messageBubble.textContent = message;
+            } else {
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'markdown-content';
+                contentWrapper.innerHTML = marked.parse(message);
+                
+                messageBubble.appendChild(contentWrapper);
+
+                messageBubble.classList.add('flex', 'items-start', 'gap-2');
+                const speakerIcon = document.createElement('button');
+                speakerIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-60 hover:opacity-100 cursor-pointer flex-shrink-0 mt-1"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+                speakerIcon.onclick = (e) => speak(message, e.currentTarget);
+                speakerIcon.classList.add('bg-transparent', 'border-none', 'p-0');
+                
+                messageBubble.appendChild(speakerIcon);
+            }
+
+
+            if (sender === 'user') {
+                messageContainer.appendChild(messageBubble);
+                messageContainer.appendChild(avatar);
+            } else {
+                messageContainer.appendChild(avatar);
+                messageContainer.appendChild(messageBubble);
+            }
+            
+            chatWindow.appendChild(messageContainer);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        /**
+         * Shows or hides the bot's typing indicator.
+         * @param {boolean} show - Whether to show or hide the indicator.
+         */
+        function toggleTypingIndicator(show) {
+            let indicator = document.getElementById('typing-indicator');
+            if (show) {
+                if (!indicator) {
+                    indicator = document.createElement('div');
+                    indicator.id = 'typing-indicator';
+                    indicator.className = 'flex gap-2.5 items-end message-fade-in justify-start';
+                    indicator.innerHTML = `
+                        <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-blue-400">
+                            <span class="text-white text-sm font-semibold">AI</span>
+                        </div>
+                        <div class="max-w-xs md:max-w-md p-3 rounded-2xl bg-white/80 text-gray-800 rounded-bl-none">
+                            <div class="flex items-center justify-center space-x-1">
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0s;"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s;"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s;"></div>
+                            </div>
+                        </div>`;
+                    chatWindow.appendChild(indicator);
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+            } else {
+                if (indicator) {
+                    indicator.remove();
+                }
+            }
+        }
+
+        /**
+         * Fetches a response from the Gemini API and displays it.
+         * @param {string} userMessage - The user's input message.
+         */
+        async function handleBotResponse(userMessage) {
+            toggleTypingIndicator(true);
+            userInput.disabled = true;
+            sendButton.disabled = true;
+            micButton.disabled = true;
+
+            const apiKey = "AIzaSyAfm7sbVn6YpLt8D7NTmKiPsRFxS6e1xz8"; // This will be provided by the execution environment.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userMessage }] }],
+                systemInstruction: {
+                    parts: [{ text: systemInstructionText }]
+                },
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const botReply = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!botReply) {
+                    throw new Error("No content in API response.");
+                }
+                
+                toggleTypingIndicator(false);
+                addMessage(botReply, 'bot');
+
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                toggleTypingIndicator(false);
+                addMessage("Sorry, I'm having a little trouble connecting right now. Please try again in a moment.", 'bot');
+            } finally {
+                userInput.disabled = false;
+                sendButton.disabled = !userInput.value.trim();
+                micButton.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        micButton.addEventListener('click', () => {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message || userInput.disabled) return;
+
+            addMessage(message, 'user');
+            userInput.value = '';
+            sendButton.disabled = true; // Disable after sending
+            handleBotResponse(message);
+        });
+
+        userInput.addEventListener('input', () => {
+            sendButton.disabled = !userInput.value.trim();
+        });
+
+        // --- Initial State ---
+
+        async function initializeChat() {
+            sendButton.disabled = true;
+            await loadSystemInstruction();
+            setTimeout(() => {
+                addMessage("Hi! I'm your friendly Gemini assistant. You can ask me anything!", 'bot');
+            }, 500);
+        }
+
+        // Start the chat on page load
+        initializeChat();
+    </script>
+</body>
+</html>
+
